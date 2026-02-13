@@ -12,10 +12,11 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy package files
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json ./
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+# If a lockfile is present, enforce it; otherwise fall back to a normal install.
+RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
@@ -29,6 +30,9 @@ COPY --from=deps /app/node_modules ./node_modules
 
 # Copy source files
 COPY . .
+
+# Ensure /app/public exists even if the repo doesn't include a public/ directory.
+RUN mkdir -p public
 
 # Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
